@@ -31,7 +31,7 @@ const SidebarAI = () => {
         </Box> */}
 
                 {/* New Chat Button */}
-                <Button bgGradient="linear(to-r, blue.800, purple.600)" _hover={{ bgGradient: "linear(to-r, purple.600, blue.800)" }} size="sm" w="full" textColor="white" onClick={() => window.location.href = "/ai-assistant"}>
+                <Button bgGradient="linear(to-r, blue.800, purple.600)"  _hover={{ bgGradient: "linear(to-r, blue.600, purple.400)" }} size="sm" w="full" textColor="white" onClick={() => window.location.href = "/ai-assistant"}>
                     New Chat
                 </Button>
 
@@ -48,7 +48,7 @@ const SidebarAI = () => {
                                 bg="white"
                                 boxShadow="sm"
                                 _hover={{
-                                    bgGradient: "linear(to-r, blue.400, purple.400)",
+                                    bgGradient: "linear(to-r, blue.600, purple.400)",
                                     color: "white",
                                 }}
                                 cursor="pointer"

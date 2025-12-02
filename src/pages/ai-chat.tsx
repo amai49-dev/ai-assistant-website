@@ -130,7 +130,7 @@ export default function AIChat() {
                 <Box
                   key={msg.id}
                   alignSelf={msg.role === "user" ? "flex-end" : "flex-start"}
-                  bg={msg.role === "user" ? "blue.500" : "gray.200"}
+                  bg={msg.role === "user" ? "blue.800" : "gray.200"}
                   color={msg.role === "user" ? "white" : "black"}
                   px={4}
                   py={2}
@@ -170,7 +170,7 @@ export default function AIChat() {
                   if (e.key === "Enter") sendMessage();
                 }}
               />
-              <Button colorScheme="blue" onClick={sendMessage}>
+              <Button bgGradient="linear(to-r, blue.800, purple.600)"  _hover={{ bgGradient: "linear(to-r, blue.600, purple.400)" }} textColor="white" onClick={sendMessage}>
                 ส่ง
               </Button>
             </HStack>

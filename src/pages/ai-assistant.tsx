@@ -19,9 +19,9 @@ export default function Page2() {
                         <Grid templateColumns={{ base: "1fr", md: "repeat(2, 1fr)" }} gap={6} maxW="800px" minW="600px">
                             {[
                                 { title: "General AI", desc: "สอบถามเรื่องทั่วไป", link: "/ai-chat" },
-                                { title: "HR Care", desc: "ให้คำแนะนำเกี่ยวกับการดูแลพนักงาน และทรัพยากรบุคคล", link: "/ai-hrcare" },
-                                { title: "Product Expert", desc: "ให้คำแนะนำเกี่ยวกับผลิตภัณฑ์ของคุณ", link: "/ai-productexpert" },
-                                { title: "Market Expert", desc: "ให้คำแนะนำเกี่ยวกับตลาดและการวิเคราะห์", link: "/ai-marketexpert" },
+                                { title: "HR Care", desc: "ให้คำแนะนำเกี่ยวกับการดูแลพนักงาน และทรัพยากรบุคคล", link: "#" },
+                                { title: "Product Expert", desc: "ให้คำแนะนำเกี่ยวกับผลิตภัณฑ์ของคุณ", link: "#" },
+                                { title: "Market Expert", desc: "ให้คำแนะนำเกี่ยวกับตลาดและการวิเคราะห์", link: "#" },
                             ].map((item, i) => (
                                 <Box
                                     key={i}

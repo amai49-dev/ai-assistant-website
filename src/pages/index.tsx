@@ -19,12 +19,12 @@ export default function Home() {
           <Box p={6} bg="white" borderRadius="md" boxShadow="md" borderColor="gray.200" borderWidth="1px" textAlign="left">
             <Text mb={4} fontWeight="bold" textColor="blue.800">AI Assistant</Text>
             <Text mb={4}>พูดคุยกับ AI Assistant</Text>
-            <Button bgGradient="linear(to-r, blue.800, purple.600)" _hover={{ bgGradient: "linear(to-r, purple.600, blue.800)" }} width="full" textColor="white" onClick={() => router.push("/ai-assistant")}>Start Chat</Button>
+            <Button bgGradient="linear(to-r, blue.800, purple.600)" _hover={{ bgGradient: "linear(to-r, blue.600, purple.400)" }} width="full" textColor="white" onClick={() => router.push("/ai-assistant")}>Start Chat</Button>
           </Box>
           <Box p={6} bg="white" borderRadius="md" boxShadow="md" borderColor="gray.200" borderWidth="1px" textAlign="left">
             <Text mb={4} fontWeight="bold" textColor="blue.800">Meeting Management</Text>
             <Text mb={4}>จัดการการประชุมของคุณอย่างมีประสิทธิภาพ</Text>
-            <Button bgGradient="linear(to-r, blue.800, purple.600)" _hover={{ bgGradient: "linear(to-r, purple.600, blue.800)" }} width="full" textColor="white" onClick={() => router.push("#")}>Start Management</Button>
+            <Button bgGradient="linear(to-r, blue.800, purple.600)" _hover={{ bgGradient: "linear(to-r, blue.600, purple.400)" }} width="full" textColor="white" onClick={() => router.push("#")}>Start Management</Button>
           </Box>
         </Grid>
       </Center>
