@@ -74,7 +74,7 @@ const SidebarAI = () => {
                         // 🎨 Drop Shadow และสีปกติ
                         boxShadow="md"
                         bg="white"
-                        onClick={() => window.location.href = "#"}
+                        onClick={() => window.location.href = "/meeting-management"}
                         _hover={{
                             // 💡 Hover Effects
                             color: "purple.600",

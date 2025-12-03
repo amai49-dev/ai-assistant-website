@@ -44,7 +44,7 @@ export default function Page2() {
                         rounded="full"
                         transition="all 0.3s ease"
                         cursor="pointer"
-                        onClick={() => window.location.href = "#"}
+                        onClick={() => window.location.href = "/meeting-management"}
                         _hover={{
                             borderColor: "blue.500",
                             boxShadow: "0 4px 20px 0 rgba(59, 130, 246, 0.4)",
