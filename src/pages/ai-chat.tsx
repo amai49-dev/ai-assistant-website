@@ -213,18 +213,15 @@ export default function AIChat() {
       mt="64px"
       h="calc(100vh - 64px)"
       position="relative"
-      // bg="gray.50"
+      bg="gray.50"
     >
       {/* Chat container */}
       <Box
         ref={chatContainerRef}
         flex="1"
         overflowY="auto"
-        mb={4}
         p={4}
-        bg="gray.100"
-        borderRadius="xl"
-        boxShadow="xl"
+        mb="10px"  // ← กันพื้นที่ให้ input bar ไม่ทับข้อความ
       >
         <VStack spacing={4} align="stretch">
           {messages.map((msg: Message) => {
@@ -284,12 +281,20 @@ export default function AIChat() {
               </Box>
             );
           })}
+
         </VStack>
       </Box>
 
-      {/* Input bar ติดด้านล่าง */}
-      <Box pb={4}>
-        {/* 💡 เรียกใช้ ChatInputBar ที่เป็น useCallback */}
+      {/* Chat input bar fixed-bottom (จริง) */}
+      <Box
+        position="sticky"
+        bottom="0"
+        bg="white"
+        p={4}
+        boxShadow="lg"
+        borderRadius="xl"
+        zIndex={10}
+      >
         <ChatInput
           input={input}
           setInput={setInput}
@@ -300,7 +305,7 @@ export default function AIChat() {
         />
       </Box>
     </Flex>
-  ); // 💡 Dependency Array: ถูกสร้างใหม่เมื่อ messages, isLoading, ChatInputBar เปลี่ยนเท่านั้น
+  );
 
 
   return (
