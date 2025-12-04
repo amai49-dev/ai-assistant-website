@@ -25,7 +25,7 @@ const Navbar = () => {
         <Text fontSize="xs" fontWeight="light">{pageName}</Text>
       </Flex>
       <Spacer />
-      <Avatar name="Admin" size="sm" />
+      <Avatar name="Piriwit" size="sm" />
     </Flex>
   );
 };

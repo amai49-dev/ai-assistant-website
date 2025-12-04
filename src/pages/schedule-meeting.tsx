@@ -31,98 +31,13 @@ import { AddIcon, ChevronLeftIcon, ChevronRightIcon, WarningIcon, CloseIcon, Tim
 import { useState, useMemo, useRef } from "react";
 import { HamburgerIcon } from "@chakra-ui/icons";
 import { useRouter } from "next/router";
+import { REAL_SCHEDULE_DATA, ScheduleItem } from "../utils/mockData";
 
 // ------------------- TypeScript Types and Real Data -------------------
 
 // Interface สำหรับข้อมูล Schedule List จริง
-interface ScheduleItem {
-  id: number;
-  type: 'Holiday' | 'Service' | 'Task' | string;
-  typeName?: string; // มีเฉพาะใน Holiday
-  name: string;
-  start: string; // ISO 8601 string (e.g., "2025-03-25T17:00:00.000Z")
-  end: string;   // ISO 8601 string
-  color: string;
-  allDay: boolean;
-  assignee_firstname: (string | null)[] | string | null;
-  department_name: string | null;
-  license_plate: string | null;
-
-}
 
 // ข้อมูล Schedule List จริง (อัปเดตจากผู้ใช้)
-const REAL_SCHEDULE_DATA: ScheduleItem[] = [
-  {
-    "id": 1,
-    "type": "Holiday",
-    "typeName": "วันหยุดตามกฏหมาย",
-    "name": "วันเข้าพรรษา",
-    "start": "2025-01-03",
-    "end": "2025-01-03",
-    "color": "#FF3F3F",
-    "allDay": true,
-    "assignee_firstname": "",
-    "department_name": "",
-    "license_plate": ""
-  },
-  {
-    "id": 3,
-    "type": "Holiday",
-    "typeName": "วันหยุดบริษัท",
-    "name": "วันพระ",
-    "start": "2025-02-28",
-    "end": "2025-02-28",
-    "color": "#FF3F3F",
-    "allDay": true,
-    "assignee_firstname": "",
-    "department_name": "",
-    "license_plate": ""
-  },
-  // .....
-  {
-    "id": 140,
-    "type": "Service",
-    "name": "ซ่อมประตูบ้าน",
-    "start": "2025-12-29T08:00:00.000Z",
-    "end": "2025-12-29T09:00:00.000Z",
-    "color": "#77a717ff",
-    "allDay": false,
-    "assignee_firstname": [
-      "กรต"
-    ],
-    "department_name": "ฝ่ายออกแบบ",
-    "license_plate": null
-  },
-  {
-    "id": 141,
-    "type": "Service",
-    "name": "ddd",
-    "start": "2025-12-04T01:00:00.000Z",
-    "end": "2025-12-04T11:00:00.000Z",
-    "color": "#c7afaf",
-    "allDay": false,
-    "assignee_firstname": [
-      "วีระศักดิ์"
-    ],
-    "department_name": "ฝ่าย IT Supprot",
-    "license_plate": null
-  },
-  {
-    "id": 142, // กิจกรรม piriwat วันที่ 5
-    "type": "Service",
-    "name": "ประชุมกับพี่วัต",
-    "start": "2025-12-08T01:00:00.000Z",
-    "end": "2025-12-08T04:00:00.000Z",
-    "color": "#c7afaf",
-    "allDay": false,
-    "assignee_firstname": [
-      "piriwat"
-    ],
-    "department_name": "ฝ่าย IT Supprot",
-    "license_plate": null
-  }
-];
-
 
 // MOCK: รายชื่อผู้เข้าร่วมที่เป็นไปได้
 const MOCK_ALL_PARTICIPANTS = [
@@ -418,6 +333,8 @@ const CalendarDayBox = ({ date, status, events, isCurrentMonth, isToday, isPast,
   const day = date.getDate();
   const boxRef = useRef(null);
 
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6; // เช็คเสาร์-อาทิตย์
+
   let bgColor = isCurrentMonth ? "white" : "gray.50";
   let textColor = isCurrentMonth ? "gray.800" : "gray.400";
   let icon = null;
@@ -429,33 +346,47 @@ const CalendarDayBox = ({ date, status, events, isCurrentMonth, isToday, isPast,
     textColor = "red.400";
   } else if (isCurrentMonth && !isPast) {
     if (status === 'ALL_AVAILABLE') {
-      // ว่างทุกคน: เขียว + เครื่องหมาย ! 
       bgColor = "green.100";
       textColor = "green.800";
       icon = <WarningIcon w={3} h={3} ml={1} color="green.600" />;
     } else if (status === 'PARTIAL_AVAILABLE') {
-      // 🚨 การแก้ไข: ว่างบางส่วน: ใช้สีส้ม
       bgColor = "green.100";
       textColor = "green.800";
       icon = <WarningIcon w={3} h={3} ml={1} color="green.600" />;
     } else if (status === 'NONE_AVAILABLE') {
-      // ไม่ว่างเลย: แดงอ่อน
       bgColor = "red.100";
       textColor = "red.800";
       icon = <CloseIcon w={3} h={3} ml={1} color="red.600" />;
     }
   }
 
-  // ให้สามารถเลือกวันที่ว่างบางส่วนได้ (สถานะ 'PARTIAL_AVAILABLE' หรือ 'ALL_AVAILABLE')
-  const isSelectable = isCurrentMonth && !isPast && status !== 'NONE_AVAILABLE';
+  // ✅ ปรับให้เสาร์-อาทิตย์ไม่สามารถเลือกได้
+  const isSelectable = isCurrentMonth && !isPast && status !== 'NONE_AVAILABLE' && !isWeekend;
   const cursor = isSelectable ? "pointer" : "default";
-
-  // ปรับสี Hover ให้ตรง
   const hoverBgColor = isSelectable
-    ? (status === 'ALL_AVAILABLE' ? "green.200" : "green.200") // 🚨 การแก้ไข: Partial Hover เป็นส้ม
+    ? (status === 'ALL_AVAILABLE' ? "green.200" : "green.200")
     : undefined;
 
-  // ใช้ Popover สำหรับ Hover Card
+  // หากเป็น weekend → ไม่แสดง Popover เลย
+  if (isWeekend) {
+    return (
+      <Center
+        ref={boxRef}
+        h={{ base: "40px", md: "50px" }}
+        border="1px"
+        borderColor="gray.200"
+        fontSize={{ base: "sm", md: "md" }}
+        bg={bgColor}
+        color={textColor}
+        fontWeight={isToday ? "bold" : "normal"}
+        opacity={0.6}
+        userSelect="none"
+      >
+        {day}
+      </Center>
+    );
+  }
+
   return (
     <Popover trigger="hover" placement="top-start" openDelay={200}>
       <PopoverTrigger>
@@ -485,7 +416,6 @@ const CalendarDayBox = ({ date, status, events, isCurrentMonth, isToday, isPast,
         </Center>
       </PopoverTrigger>
 
-      {/* Popover Content */}
       <PopoverContent zIndex={9999} maxW="320px" boxShadow="xl">
         <PopoverBody p={3}>
           <DayHoverCard date={date} events={events} selectedParticipants={selectedParticipants} />
@@ -551,14 +481,16 @@ export default function ScheduleMeeting() {
 
     // Check Status again before navigating
     const { status } = getConsolidatedAvailability(date, selectedParticipants, REAL_SCHEDULE_DATA);
-
     // หากไม่ว่างเลย ห้ามเลือก
     if (status === 'NONE_AVAILABLE') {
       alert("Cannot select this day. All participants are busy or it is a holiday.");
       return;
     }
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // getMonth() ให้ค่า 0-11
+    const day = date.getDate().toString().padStart(2, '0');
 
-    const dateString = date.toISOString().split('T')[0];
+    const dateString = `${year}-${month}-${day}`;
     const participantsString = selectedParticipants.join(',');
 
     router.push({
@@ -727,7 +659,7 @@ export default function ScheduleMeeting() {
           p={{ base: 4, md: 8 }}
           borderRadius="lg"
           boxShadow="xl"
-          maxW="650px"
+          maxW="800px"
           w="full"
         >
           <VStack spacing={6} align="stretch">

@@ -19,95 +19,10 @@ import Navbar from "../components/Navbar";
 import { useRouter } from "next/router";
 import { useState, useMemo } from "react";
 import { ArrowBackIcon, RepeatIcon, TimeIcon, CheckCircleIcon, CloseIcon } from "@chakra-ui/icons";
+import { REAL_SCHEDULE_DATA, ScheduleItem } from "../utils/mockData";
 
 // ------------------- REAL DATA & Types (ต้องคัดลอกมาจาก schedule-meeting.tsx) -------------------
 
-interface ScheduleItem {
-    id: number;
-    type: 'Holiday' | 'Service' | 'Task' | string;
-    typeName?: string;
-    name: string;
-    start: string; // ISO 8601 string (e.g., "2025-03-25T17:00:00.000Z")
-    end: string;   // ISO 8601 string
-    color: string;
-    allDay: boolean;
-    assignee_firstname: (string | null)[] | string | null;
-    department_name: string | null;
-    license_plate: string | null;
-}
-
-// *** IMPORTANT: คัดลอกข้อมูล REAL_SCHEDULE_DATA ที่สมบูรณ์มาจากไฟล์ schedule-meeting.tsx ***
-const REAL_SCHEDULE_DATA: ScheduleItem[] = [
-    {
-        "id": 1,
-        "type": "Holiday",
-        "typeName": "วันหยุดตามกฏหมาย",
-        "name": "วันเข้าพรรษา",
-        "start": "2025-01-03",
-        "end": "2025-01-03",
-        "color": "#FF3F3F",
-        "allDay": true,
-        "assignee_firstname": "",
-        "department_name": "",
-        "license_plate": ""
-    },
-    {
-        "id": 3,
-        "type": "Holiday",
-        "typeName": "วันหยุดบริษัท",
-        "name": "วันพระ",
-        "start": "2025-02-28",
-        "end": "2025-02-28",
-        "color": "#FF3F3F",
-        "allDay": true,
-        "assignee_firstname": "",
-        "department_name": "",
-        "license_plate": ""
-    },
-    // .....
-    {
-        "id": 140,
-        "type": "Service",
-        "name": "ซ่อมประตูบ้าน",
-        "start": "2025-12-29T08:00:00.000Z",
-        "end": "2025-12-29T09:00:00.000Z",
-        "color": "#77a717ff",
-        "allDay": false,
-        "assignee_firstname": [
-            "กรต"
-        ],
-        "department_name": "ฝ่ายออกแบบ",
-        "license_plate": null
-    },
-    {
-        "id": 141,
-        "type": "Service",
-        "name": "ddd",
-        "start": "2025-12-04T01:00:00.000Z",
-        "end": "2025-12-04T11:00:00.000Z",
-        "color": "#c7afaf",
-        "allDay": false,
-        "assignee_firstname": [
-            "วีระศักดิ์"
-        ],
-        "department_name": "ฝ่าย IT Supprot",
-        "license_plate": null
-    },
-    {
-        "id": 142, // กิจกรรม piriwat วันที่ 5
-        "type": "Service",
-        "name": "ประชุมกับพี่วัต",
-        "start": "2025-12-08T01:00:00.000Z",
-        "end": "2025-12-08T04:00:00.000Z",
-        "color": "#c7afaf",
-        "allDay": false,
-        "assignee_firstname": [
-            "piriwat"
-        ],
-        "department_name": "ฝ่าย IT Supprot",
-        "license_plate": null
-    }
-];
 // ------------------- END REAL DATA & Types -------------------
 
 
@@ -122,12 +37,11 @@ interface CombinedTimeSlot {
 /**
  * ฟังก์ชันช่วยแปลง ISO 8601 UTC string เป็น Local Date (GMT+7)
  */
-const getLocalDateFromISO = (iso: any) => {
+const getLocalDateFromISO = (iso: string) => {
     const [datePart, timePart] = iso.split("T");
     const [y, m, d] = datePart.split("-");
     const [hh, mm, ss] = timePart.replace("Z", "").split(":");
-
-    return new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm), Number(ss));
+    return new Date(Number(y), Number(m) - 1, Number(d), Number(hh) + 7, Number(mm), Number(ss)); // GMT+7
 };
 
 /**
@@ -153,9 +67,11 @@ const getCombinedTimeSlotsFromRealData = (
 
         // แปลงเวลาเริ่มต้น/สิ้นสุดของ Slot 1 ชั่วโมง เป็น Date Object (Local Time)
         const dateObj = new Date(dateString); // วันที่ที่เลือก (YYYY-MM-DD)
-        const slotStartDateTime = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), h, 0, 0);
-        const slotEndDateTime = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), h + 1, 0, 0);
+        const slotStartDateTime = new Date(dateString);
+        slotStartDateTime.setHours(h, 0, 0, 0);
 
+        const slotEndDateTime = new Date(dateString);
+        slotEndDateTime.setHours(h + 1, 0, 0, 0);
         let busyCount = 0;
 
         // 1. ตรวจสอบว่าผู้เข้าร่วมแต่ละคนว่างใน Slot นี้หรือไม่
@@ -228,11 +144,12 @@ const TimeSlotButtonPicker = ({ timeSlots, onSelectRange }: TimeSlotButtonPicker
         const slotStatus = timeSlots[index].status;
 
         if (slotStatus === 'NONE_AVAILABLE') {
-            setSelectedIndices([]);
-            setMultiSelectStart(null);
-            onSelectRange(null);
-            return;
-        }
+        // หากคลิก Slot ที่ไม่ว่าง ให้ยกเลิกการเลือกทั้งหมด
+        setSelectedIndices([]);
+        setMultiSelectStart(null);
+        onSelectRange(null);
+        return; // ออกจากฟังก์ชันหลังจากยกเลิก
+    }
 
         if (multiSelectStart !== null) {
             const startIdx = Math.min(multiSelectStart, index);
