@@ -10,11 +10,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { message } = req.body;
 
     try {
+        const token = req.cookies.token;
         const response = await axios.post(
             "https://n8n.anodaz.online/webhook/demo-chatbot-sale",
             {
                 headers: {
-                    "Authorization": `Bearer ${`eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJpYXQiOjE3NjUxODA4NjgsImV4cCI6MTc2NTM5Njg2OH0.lOu1YeIyBkJheB8TRBXk_8xp_Su60KvuqHKcbsJY-u8`}`,
+                    "Authorization": `Bearer ${token}`,
                 },
                 message
             },
