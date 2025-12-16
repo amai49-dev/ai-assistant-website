@@ -57,7 +57,7 @@ export default async function handler(
             maxAge: 60 * 60 * 24 * 7, // 7 days
         }));
 
-        res.status(200).json({ message: 'Login successful' });
+        res.status(200).json({ message: 'Login successful', token: data.data.access_token });
 
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: 'An unexpected error occurred' });

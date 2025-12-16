@@ -16,7 +16,7 @@ import axios from "axios";
 import { useRouter } from "next/router";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("admin@hitop.co.th");
+    const [email, setEmail] = useState("admin@brainwave.com");
     const [password, setPassword] = useState("123123123");
     const [isLoading, setIsLoading] = useState(false);
     const toast = useToast();
@@ -33,6 +33,11 @@ export default function LoginPage() {
             });
 
             console.log("Login successful", response.data);
+
+            // Store token in localStorage
+            if (response.data.token) {
+                localStorage.setItem("token", response.data.token);
+            }
 
             toast({
                 title: "Success",
