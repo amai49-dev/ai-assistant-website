@@ -222,7 +222,17 @@ export default function AIChatInventory() {
                     <Text opacity={0.6}>{msg.content}</Text>
                   ) : isLatestAi ? (
                     // ⭐ CHANGE: typing เฉพาะ AI ตัวล่าสุด
-                    <AIMarkdownSequential content={msg.content} />
+                    <AIMarkdownSequential
+                      content={msg.content}
+                      onFinished={() => {
+                        requestAnimationFrame(() => {
+                          chatContainerRef.current?.scrollTo({
+                            top: chatContainerRef.current.scrollHeight,
+                            behavior: "smooth",
+                          });
+                        });
+                      }}
+                    />
                   ) : (
                     // ⭐ CHANGE: AI เก่า render นิ่ง
                     <MarkdownMessage content={msg.content} />

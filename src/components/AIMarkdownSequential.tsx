@@ -7,6 +7,7 @@ import { useTypewriter } from "@/hooks/useTypewriter";
 
 type Props = {
     content: string;
+    onFinished?: () => void; // ⭐ ADD
 };
 
 /* ⭐ style กลางสำหรับ markdown table */
@@ -48,7 +49,7 @@ const markdownComponents = {
     ),
 };
 
-export default function AIMarkdownSequential({ content }: Props) {
+export default function AIMarkdownSequential({ content, onFinished }: Props) {
     const blocks = splitMarkdown(content);
     const [visibleCount, setVisibleCount] = useState(1);
 
@@ -86,7 +87,13 @@ export default function AIMarkdownSequential({ content }: Props) {
                     <TypingBlock
                         key={`${index}-${content}`}
                         text={block.content}
-                        onDone={isLastVisible ? showNext : undefined}
+                        onDone={() => {
+                            showNext();
+                            // ⭐ เมื่อ block สุดท้ายเสร็จ → แจ้ง parent
+                            if (index === blocks.length - 1) {
+                                onFinished?.();
+                            }
+                        }}
                     />
                 );
             })}
@@ -97,12 +104,16 @@ export default function AIMarkdownSequential({ content }: Props) {
 function TypingBlock({
     text,
     onDone,
+    scrollToBottom,
 }: {
     text: string;
     onDone?: () => void;
+    scrollToBottom?: () => void;
 }) {
     const { displayed, done } = useTypewriter(text, 12);
-
+    useEffect(() => {
+        scrollToBottom?.();
+    }, [displayed]);
     // ✅ พิมพ์เสร็จ → render markdown เต็มรูปแบบ
     if (done) {
         if (onDone) onDone();
