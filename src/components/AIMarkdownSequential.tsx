@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Text, Box } from "@chakra-ui/react";
@@ -52,6 +52,10 @@ export default function AIMarkdownSequential({ content }: Props) {
     const blocks = splitMarkdown(content);
     const [visibleCount, setVisibleCount] = useState(1);
 
+    useEffect(() => {
+        setVisibleCount(1);
+    }, [content]);
+
     const showNext = () => {
         setVisibleCount((c) => Math.min(c + 1, blocks.length));
     };
@@ -69,7 +73,7 @@ export default function AIMarkdownSequential({ content }: Props) {
 
                     return (
                         <ReactMarkdown
-                            key={index}
+                            key={`table-${index}-${content}`}
                             remarkPlugins={[remarkGfm]}
                             components={markdownComponents}
                         >
@@ -80,7 +84,7 @@ export default function AIMarkdownSequential({ content }: Props) {
 
                 return (
                     <TypingBlock
-                        key={index}
+                        key={`${index}-${content}`}
                         text={block.content}
                         onDone={isLastVisible ? showNext : undefined}
                     />

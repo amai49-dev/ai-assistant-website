@@ -10,7 +10,7 @@ import {
   Image,
 } from "@chakra-ui/react";
 import { FaDownload, FaPlus } from "react-icons/fa";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import NavbarAI from "../components/NavbarAI";
 import SidebarAI from "../components/SidebarAI";
 import { useRouter } from "next/router";
@@ -36,6 +36,10 @@ export default function AIChatSale() {
 
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const lastAiMessageId = useMemo(() => {
+    return [...messages].reverse().find((m) => m.role === "ai")?.id;
+  }, [messages]);
 
   // keep prev length to detect additions
   const prevMessagesLenRef = useRef<number>(0);
@@ -193,6 +197,8 @@ export default function AIChatSale() {
       <Box ref={chatContainerRef} flex="1" overflowY="auto" p={4} pb="120px">
         <VStack spacing={4} align="stretch">
           {messages.map((msg: Message) => {
+            const isLatestAi =
+              msg.role === "ai" && msg.id === lastAiMessageId;
             if (msg.role === "ai" && msg.type === "link") {
               const url = msg.content;
               const displayFileName = getCleanFileName(url, "ไฟล์ดาวน์โหลด");
@@ -209,10 +215,20 @@ export default function AIChatSale() {
             }
 
             return (
-              <Box key={msg.id} alignSelf={msg.role === "user" ? "flex-end" : "flex-start"} bg={msg.role === "user" ? "blue.600" : "white"} color={msg.role === "user" ? "white" : "gray.800"} px={4} py={2} borderRadius="2xl" border={msg.role === "ai" ? "1px solid" : "none"} borderColor={msg.role === "ai" ? "gray.200" : "transparent"} maxW="80%" whiteSpace="pre-wrap" wordBreak="break-word" boxShadow={msg.role === "ai" ? "sm" : "md"} opacity={msg.content === "กำลังประมวลผล..." ? 0.7 : 1}>
-                {msg.role === "ai"
-                  ? <AIMarkdownSequential content={msg.content} />
-                  : msg.content}
+              <Box key={msg.id} alignSelf={msg.role === "user" ? "flex-end" : "flex-start"} bg={msg.role === "user" ? "blue.600" : "white"} color={msg.role === "user" ? "white" : "gray.800"} px={6} py={4} borderRadius="2xl" border={msg.role === "ai" ? "1px solid" : "none"} borderColor={msg.role === "ai" ? "gray.200" : "transparent"} maxW="80%" whiteSpace="pre-wrap" wordBreak="break-word" boxShadow={msg.role === "ai" ? "sm" : "md"} opacity={msg.content === "กำลังประมวลผล..." ? 0.7 : 1}>
+                {msg.role === "ai" ? (
+                  msg.content === "กำลังประมวลผล..." ? (
+                    <Text opacity={0.6}>{msg.content}</Text>
+                  ) : isLatestAi ? (
+                    // ⭐ CHANGE: typing เฉพาะ AI ตัวล่าสุด
+                    <AIMarkdownSequential content={msg.content} />
+                  ) : (
+                    // ⭐ CHANGE: AI เก่า render นิ่ง
+                    <MarkdownMessage content={msg.content} />
+                  )
+                ) : (
+                  msg.content
+                )}
               </Box>
             );
           })}
