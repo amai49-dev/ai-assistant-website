@@ -25,7 +25,7 @@ export default async function handler(
     }
 
     try {
-        const response = await fetch('https://erp-ai.anodaz.online/api/login', {
+        const response = await fetch('https://erp-ai.amai49.com/api/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // user token 
         const token = req.cookies.token;
         const response = await axios.post(
-            "https://n8n.anodaz.online/webhook/demo-chatbot-hr",
+            "https://n8n.amai49.com/webhook/demo-chatbot-hr",
             {
                 headers: {
                     "Authorization": `Bearer ${token}`,

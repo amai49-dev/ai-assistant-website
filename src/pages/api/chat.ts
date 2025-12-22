@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
         const response = await axios.post(
-            "https://n8n.anodaz.online/webhook/demo-chatbot",
+            "https://n8n.amai49.com/webhook/demo-chatbot",
             { message },
             { timeout: 120000 } // 120s (ปรับได้)
         );

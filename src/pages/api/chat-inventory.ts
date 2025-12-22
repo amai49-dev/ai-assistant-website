@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
         const token = req.cookies.token;
         const response = await axios.post(
-            "https://n8n.anodaz.online/webhook/demo-chatbot-inventory",
+            "https://n8n.amai49.com/webhook/demo-chatbot-inventory",
             {
                 headers: {
                     "Authorization": `Bearer ${token}`,
