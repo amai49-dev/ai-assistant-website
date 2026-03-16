@@ -16,7 +16,6 @@ import SidebarAI from "../components/SidebarAI";
 import { useRouter } from "next/router";
 import ChatInputBeta from "../components/ChatInputBeta";
 import MarkdownMessage from "../components/MarkdownMessage";
-import AIMarkdownHybrid from "../components/AIMarkdownHybrid";
 import AIMarkdownSequential from "@/components/AIMarkdownSequential";
 
 interface Message {
