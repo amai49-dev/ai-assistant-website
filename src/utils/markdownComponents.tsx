@@ -45,16 +45,8 @@ export const markdownComponents: Record<string, React.FC<any>> = {
   ),
 
   // ------------------- Strong / Emphasis -------------------
-  strong: ({ children }) => (
-    <Text as="strong" fontWeight="bold">
-      {children}
-    </Text>
-  ),
-  em: ({ children }) => (
-    <Text as="em" fontStyle="italic">
-      {children}
-    </Text>
-  ),
+  strong: ({ children }) => <strong style={{ fontWeight: "bold" }}>{children}</strong>,
+  em: ({ children }) => <em style={{ fontStyle: "italic" }}>{children}</em>,
 
   // ------------------- Links -------------------
   a: ({ href, children }) => (
@@ -126,7 +118,7 @@ export const markdownComponents: Record<string, React.FC<any>> = {
     </OrderedList>
   ),
   li: ({ children }) => (
-    <ListItem lineHeight="1.7">
+    <ListItem lineHeight="1.7" sx={{ "& > p": { display: "inline" } }}>
       {children}
     </ListItem>
   ),
