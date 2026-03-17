@@ -106,17 +106,50 @@ function groupIntoLines(
       currentY = currentY ?? y;
     } else {
       if (currentGroup.length > 0) {
-        lines.push(mergeLine(currentGroup));
+        // แยก column ก่อน merge เป็น lines
+        lines.push(...splitColumnsAndMerge(currentGroup));
       }
       currentGroup = [item];
       currentY = y;
     }
   }
   if (currentGroup.length > 0) {
-    lines.push(mergeLine(currentGroup));
+    lines.push(...splitColumnsAndMerge(currentGroup));
   }
 
   return lines;
+}
+
+// ตรวจจับ column: ถ้า items ใน y-group เดียวกันมี x-gap ใหญ่ → แยกเป็นหลาย TextLine
+function splitColumnsAndMerge(
+  items: Array<{ str: string; transform: number[]; width: number; height: number }>,
+): TextLine[] {
+  if (items.length <= 1) return [mergeLine(items)];
+
+  // เรียงตาม x จากซ้ายไปขวา
+  const sorted = [...items].sort((a, b) => a.transform[4] - b.transform[4]);
+
+  // คำนวณ average character width เพื่อใช้เป็น threshold
+  const avgCharWidth = sorted.reduce(
+    (sum, i) => sum + (i.width / Math.max(i.str.length, 1)), 0,
+  ) / sorted.length;
+  const gapThreshold = Math.max(avgCharWidth * 5, 30); // gap > 5x ตัวอักษร = column break
+
+  // แยก segments ตาม x-gap
+  const segments: (typeof sorted)[] = [[]];
+  for (let i = 0; i < sorted.length; i++) {
+    segments[segments.length - 1].push(sorted[i]);
+    if (i < sorted.length - 1) {
+      const currentEnd = sorted[i].transform[4] + sorted[i].width;
+      const nextStart = sorted[i + 1].transform[4];
+      const gap = nextStart - currentEnd;
+      if (gap > gapThreshold) {
+        segments.push([]); // เริ่ม column ใหม่
+      }
+    }
+  }
+
+  return segments.filter((s) => s.length > 0).map(mergeLine);
 }
 
 function mergeLine(
