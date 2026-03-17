@@ -32,6 +32,26 @@ function getExtension(filename: string): string {
   return filename.slice(filename.lastIndexOf(".")).toLowerCase();
 }
 
+// ตรวจจับภาษาเป้าหมายจากคำสั่งของ user → return ISO-like code
+function detectLanguageCode(instruction: string): string {
+  const text = instruction.toLowerCase();
+  const langMap: [string[], string][] = [
+    [["thai", "ไทย"], "TH"],
+    [["english", "อังกฤษ", "eng"], "EN"],
+    [["japanese", "ญี่ปุ่น", "日本語"], "JP"],
+    [["chinese", "จีน", "中文"], "CN"],
+    [["korean", "เกาหลี", "한국어"], "KR"],
+    [["french", "ฝรั่งเศส"], "FR"],
+    [["german", "เยอรมัน"], "DE"],
+    [["spanish", "สเปน"], "ES"],
+  ];
+
+  for (const [keywords, code] of langMap) {
+    if (keywords.some((kw) => text.includes(kw))) return code;
+  }
+  return "XX";
+}
+
 // ส่ง text ไปแปลผ่าน vLLM (OpenAI-compatible API)
 async function translateText(text: string, userInstruction: string): Promise<string> {
   if (!text.trim()) return "";
@@ -141,7 +161,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       outputBuffer = await buildOverlayPdf(fileBuffer, pageTranslations);
-      outputFileName = `translated_${originalName}`;
+      const langCode = detectLanguageCode(userMessage);
+      outputFileName = `translated_${langCode}_${originalName}`;
       mimeType = "application/pdf";
 
     } else {
@@ -177,7 +198,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       outputBuffer = await buildTranslatedPptx(fileBuffer, translations);
-      outputFileName = `translated_${originalName}`;
+      const langCode = detectLanguageCode(userMessage);
+      outputFileName = `translated_${langCode}_${originalName}`;
       mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     }
 
