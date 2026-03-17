@@ -177,19 +177,71 @@ function computeBounds(lines: TextLine[]) {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
+// ------------------- Font Resolution (On-Demand Download) -------------------
+// CJK fonts ดาวน์โหลดจาก Google Fonts CDN ตอน runtime แล้ว cache ไว้ใน /tmp/fonts/
+
+const CJK_FONT_MAP: Record<string, { url: string; file: string }> = {
+  JP: {
+    url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf",
+    file: "NotoSansJP.ttf",
+  },
+  CN: {
+    url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf",
+    file: "NotoSansSC.ttf",
+  },
+  KR: {
+    url: "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notosanskr/NotoSansKR%5Bwght%5D.ttf",
+    file: "NotoSansKR.ttf",
+  },
+};
+
+async function resolveFont(targetLang: string): Promise<Buffer> {
+  // Thai + Latin → ใช้ font ที่ bundle มาในโปรเจค
+  const cjkConfig = CJK_FONT_MAP[targetLang];
+  if (!cjkConfig) {
+    const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansThai-Regular.ttf");
+    return fs.readFileSync(fontPath);
+  }
+
+  // CJK → ดาวน์โหลดตอน runtime แล้ว cache ไว้ใน /tmp/fonts/
+  const cacheDir = path.join("/tmp", "fonts");
+  const cachePath = path.join(cacheDir, cjkConfig.file);
+
+  if (fs.existsSync(cachePath)) {
+    console.log(`[Font] Using cached ${cjkConfig.file}`);
+    return fs.readFileSync(cachePath);
+  }
+
+  console.log(`[Font] Downloading ${cjkConfig.file} from CDN...`);
+  fs.mkdirSync(cacheDir, { recursive: true });
+
+  const response = await fetch(cjkConfig.url);
+  if (!response.ok) {
+    console.error(`[Font] Download failed: ${response.status} ${response.statusText}`);
+    // fallback → ใช้ Thai font (Latin chars จะแสดงได้ แต่ CJK จะหาย)
+    const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansThai-Regular.ttf");
+    return fs.readFileSync(fontPath);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  fs.writeFileSync(cachePath, buffer);
+  console.log(`[Font] Cached ${cjkConfig.file} (${(buffer.length / 1024 / 1024).toFixed(1)}MB)`);
+  return buffer;
+}
+
 // ------------------- PDF Overlay Build (Per-Line) -------------------
 // โหลด PDF ต้นฉบับ → ทับ text เดิมด้วยสีขาวทีละบรรทัด → วาด text แปลแล้วที่ตำแหน่งเดิม
 
 export async function buildOverlayPdf(
   originalBuffer: Buffer,
   pageTranslations: Map<number, { page: PageTextData; translatedLines: string[] }>,
+  targetLang: string = "TH",
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.load(originalBuffer);
   pdfDoc.registerFontkit(fontkit);
 
-  // โหลด font Noto Sans Thai (รองรับ Thai + Latin)
-  const fontPath = path.join(process.cwd(), "public", "fonts", "NotoSansThai-Regular.ttf");
-  const fontBytes = fs.readFileSync(fontPath);
+  // โหลด font ตามภาษาเป้าหมาย (Thai/Latin = bundled, CJK = download on demand)
+  const fontBytes = await resolveFont(targetLang);
   const customFont = await pdfDoc.embedFont(fontBytes);
 
   const pdfPages = pdfDoc.getPages();

@@ -204,9 +204,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pageTranslations.set(pageData.pageIndex, { page: pageData, translatedLines });
       }
 
-      sendEvent({ type: "progress", page: total, total, status: "building" });
-      outputBuffer = await buildOverlayPdf(fileBuffer, pageTranslations);
       const langCode = detectLanguageCode(userMessage);
+      sendEvent({ type: "progress", page: total, total, status: "building" });
+      outputBuffer = await buildOverlayPdf(fileBuffer, pageTranslations, langCode);
       outputFileName = `translated_${langCode}_${originalName}`;
       mimeType = "application/pdf";
 
