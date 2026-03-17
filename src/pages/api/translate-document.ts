@@ -101,6 +101,24 @@ async function translateText(text: string, userInstruction: string): Promise<str
   return result;
 }
 
+// แยก response ที่เป็น numbered list กลับเป็น array
+function parseNumberedLines(response: string, expectedCount: number): string[] {
+  const lines: string[] = [];
+
+  for (let i = 1; i <= expectedCount; i++) {
+    // หา pattern "N. text" โดย text อาจมีหลายบรรทัดจน hit เลขถัดไปหรือจบ string
+    const nextNum = i + 1;
+    const pattern = new RegExp(
+      `(?:^|\\n)\\s*${i}\\.\\s*(.+?)(?=\\n\\s*${nextNum}\\.|$)`,
+      "s",
+    );
+    const match = response.match(pattern);
+    lines.push(match ? match[1].trim() : "");
+  }
+
+  return lines;
+}
+
 // ------------------- Main Handler -------------------
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -144,7 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let mimeType: string;
 
     if (ext === ".pdf") {
-      // ------------------- PDF Flow (Overlay) -------------------
+      // ------------------- PDF Flow (Overlay per-line) -------------------
       const pagesData = await extractPdfWithPositions(fileBuffer);
       const pagesWithText = pagesData.filter((p) => p.fullText.trim().length > 0);
 
@@ -152,12 +170,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "ไม่พบข้อความในไฟล์ PDF" });
       }
 
-      // แปลทีละหน้า → overlay ทับบน PDF ต้นฉบับ
-      const pageTranslations = new Map<number, { page: (typeof pagesData)[0]; translatedText: string }>();
+      // แปลทีละหน้า (per-line) → overlay ทับบน PDF ต้นฉบับ
+      const pageTranslations = new Map<number, { page: (typeof pagesData)[0]; translatedLines: string[] }>();
 
       for (const pageData of pagesWithText) {
-        const translated = await translateText(pageData.fullText, userMessage);
-        pageTranslations.set(pageData.pageIndex, { page: pageData, translatedText: translated });
+        // เรียง lines จากบนลงล่าง แล้วส่งเป็น numbered list
+        const sortedLines = [...pageData.lines].sort((a, b) => b.y - a.y);
+        const numberedText = sortedLines
+          .map((line, i) => `${i + 1}. ${line.text}`)
+          .join("\n");
+
+        const translated = await translateText(
+          numberedText,
+          `${userMessage}. Translate each numbered line individually. Keep the exact same numbering format. Do not merge or reorder lines`,
+        );
+
+        const translatedLines = parseNumberedLines(translated, sortedLines.length);
+        pageTranslations.set(pageData.pageIndex, { page: pageData, translatedLines });
       }
 
       outputBuffer = await buildOverlayPdf(fileBuffer, pageTranslations);

@@ -144,12 +144,12 @@ function computeBounds(lines: TextLine[]) {
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-// ------------------- PDF Overlay Build -------------------
-// โหลด PDF ต้นฉบับ → ทับ text เดิมด้วยสีขาว → วาด text แปลแล้วทับ
+// ------------------- PDF Overlay Build (Per-Line) -------------------
+// โหลด PDF ต้นฉบับ → ทับ text เดิมด้วยสีขาวทีละบรรทัด → วาด text แปลแล้วที่ตำแหน่งเดิม
 
 export async function buildOverlayPdf(
   originalBuffer: Buffer,
-  pageTranslations: Map<number, { page: PageTextData; translatedText: string }>,
+  pageTranslations: Map<number, { page: PageTextData; translatedLines: string[] }>,
 ): Promise<Uint8Array> {
   const pdfDoc = await PDFDocument.load(originalBuffer);
   pdfDoc.registerFontkit(fontkit);
@@ -161,71 +161,58 @@ export async function buildOverlayPdf(
 
   const pdfPages = pdfDoc.getPages();
 
-  for (const [pageIndex, { page: pageData, translatedText }] of pageTranslations) {
+  for (const [pageIndex, { page: pageData, translatedLines }] of pageTranslations) {
     if (pageIndex >= pdfPages.length) continue;
 
     const pdfPage = pdfPages[pageIndex];
-    const { bounds, lines } = pageData;
+    const { lines } = pageData;
 
-    if (lines.length === 0 || !translatedText.trim()) {
-      console.log(`[PDF] Page ${pageIndex}: skipped (no lines or empty translation)`);
+    // เรียง lines จากบนลงล่าง (เหมือนลำดับที่ส่งไปแปล)
+    const sortedLines = [...lines].sort((a, b) => b.y - a.y);
+
+    if (sortedLines.length === 0) {
+      console.log(`[PDF] Page ${pageIndex}: skipped (no lines)`);
       continue;
     }
 
-    console.log(`[PDF] Page ${pageIndex}: ${lines.length} lines, translatedText length=${translatedText.length}`);
-    console.log(`[PDF] Page ${pageIndex}: translatedText preview: ${translatedText.substring(0, 150)}`);
+    console.log(`[PDF] Page ${pageIndex}: ${sortedLines.length} lines, ${translatedLines.length} translations`);
 
-    // คำนวณ fontSize เฉลี่ยจากต้นฉบับ
-    const avgFontSize = lines.reduce((sum, l) => sum + l.fontSize, 0) / lines.length;
-    const baseFontSize = Math.max(Math.min(avgFontSize, 14), 8); // จำกัดขนาด 8-14pt
-
-    // 1. วาดสี่เหลี่ยมขาวทับ text เดิม ทีละบรรทัด (รักษา image ระหว่างบรรทัด)
-    const padding = 2;
-    for (const line of lines) {
-      pdfPage.drawRectangle({
-        x: line.x - padding,
-        y: line.y - line.height * 0.3 - padding,
-        width: line.width + padding * 2,
-        height: line.height + padding * 2,
-        color: rgb(1, 1, 1),
-      });
-    }
-
-    // 2. เรียง original lines จากบนลงล่าง (y มากสุดก่อน เพราะ PDF y เริ่มจากล่าง)
-    const sortedLines = [...lines].sort((a, b) => b.y - a.y);
-
-    // 3. Auto-shrink: ลดขนาด font จน wrapped lines <= จำนวน original lines (min 4pt)
-    const maxTextWidth = Math.max(bounds.width, 100);
-    let fontSize = baseFontSize;
-    let wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
-
-    while (wrappedLines.length > sortedLines.length && fontSize > 4) {
-      fontSize -= 0.5;
-      wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
-    }
-
-    console.log(`[PDF] Page ${pageIndex}: fontSize=${fontSize.toFixed(1)}, wrappedLines=${wrappedLines.length}, origLines=${sortedLines.length}, bounds=(${bounds.x.toFixed(0)},${bounds.y.toFixed(0)},${bounds.width.toFixed(0)},${bounds.height.toFixed(0)})`);
-
-    // 4. วาด text ที่แปลแล้วที่ตำแหน่ง (x, y) ของแต่ละ original line
     let drawnCount = 0;
     let errorCount = 0;
-    const nonEmptyWrapped = wrappedLines.filter((l) => l.trim() !== "");
+    const padding = 2;
 
-    for (let i = 0; i < nonEmptyWrapped.length; i++) {
-      // ใช้ตำแหน่งของ original line ถ้ามี, ถ้าไม่มี (overflow) ใช้ตำแหน่งสุดท้ายเลื่อนลง
-      const origLine = i < sortedLines.length
-        ? sortedLines[i]
-        : sortedLines[sortedLines.length - 1];
+    for (let i = 0; i < sortedLines.length; i++) {
+      const origLine = sortedLines[i];
+      const translated = (translatedLines[i] || "").trim();
 
-      const drawX = i < sortedLines.length ? origLine.x : origLine.x;
-      const drawY = i < sortedLines.length
-        ? origLine.y
-        : origLine.y - (i - sortedLines.length + 1) * fontSize * 1.5;
+      if (!translated) continue;
 
+      // 1. วาดสี่เหลี่ยมขาวทับ text เดิมที่ตำแหน่งนี้
+      pdfPage.drawRectangle({
+        x: origLine.x - padding,
+        y: origLine.y - origLine.height * 0.3 - padding,
+        width: origLine.width + padding * 2,
+        height: origLine.height + padding * 2,
+        color: rgb(1, 1, 1),
+      });
+
+      // 2. คำนวณ fontSize ให้พอดีกับความกว้างของ original line
+      let fontSize = Math.max(Math.min(origLine.fontSize, 14), 6);
       try {
-        pdfPage.drawText(nonEmptyWrapped[i], {
-          x: drawX,
-          y: drawY,
+        let textWidth = customFont.widthOfTextAtSize(translated, fontSize);
+        while (textWidth > origLine.width + 20 && fontSize > 4) {
+          fontSize -= 0.5;
+          textWidth = customFont.widthOfTextAtSize(translated, fontSize);
+        }
+      } catch {
+        // fallback ถ้า font ไม่รองรับบาง char
+      }
+
+      // 3. วาด text แปลแล้วที่ตำแหน่ง (x, y) เดิม
+      try {
+        pdfPage.drawText(translated, {
+          x: origLine.x,
+          y: origLine.y,
           size: fontSize,
           font: customFont,
           color: rgb(0.1, 0.1, 0.1),
