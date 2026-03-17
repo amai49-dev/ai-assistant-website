@@ -172,34 +172,40 @@ export async function buildOverlayPdf(
 
     // คำนวณ fontSize เฉลี่ยจากต้นฉบับ
     const avgFontSize = lines.reduce((sum, l) => sum + l.fontSize, 0) / lines.length;
-    const fontSize = Math.max(Math.min(avgFontSize, 14), 8); // จำกัดขนาด 8-14pt
-    const lineHeight = fontSize * 1.5;
+    const baseFontSize = Math.max(Math.min(avgFontSize, 14), 8); // จำกัดขนาด 8-14pt
 
-    // ขยาย bounding box เล็กน้อยเพื่อให้ครอบคลุม text ทั้งหมด
+    // 1. วาดสี่เหลี่ยมขาวทับ text เดิม ทีละบรรทัด (รักษา image ระหว่างบรรทัด)
     const padding = 2;
-    const coverX = bounds.x - padding;
-    const coverY = bounds.y - padding;
-    const coverW = bounds.width + padding * 2;
-    const coverH = bounds.height + fontSize + padding * 2;
+    for (const line of lines) {
+      pdfPage.drawRectangle({
+        x: line.x - padding,
+        y: line.y - line.height * 0.3 - padding,
+        width: line.width + padding * 2,
+        height: line.height + padding * 2,
+        color: rgb(1, 1, 1),
+      });
+    }
 
-    // 1. วาดสี่เหลี่ยมขาวทับ text เดิม
-    pdfPage.drawRectangle({
-      x: coverX,
-      y: coverY,
-      width: coverW,
-      height: coverH,
-      color: rgb(1, 1, 1),
-    });
+    // 2. คำนวณพื้นที่ที่ใช้วาง text แปลแล้ว (เท่ากับพื้นที่ text เดิม)
+    const availableHeight = bounds.height + baseFontSize;
+    const maxTextWidth = Math.max(bounds.width, 100);
 
-    // 2. วาด text ที่แปลแล้ว (word wrap ภายใน bounds เดิม)
-    const maxTextWidth = Math.max(coverW - 4, 100);
-    const wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
+    // 3. Auto-shrink: ลดขนาด font จนกว่า text แปลแล้วจะพอดีกับพื้นที่เดิม (min 4pt)
+    let fontSize = baseFontSize;
+    let lineHeight = fontSize * 1.5;
+    let wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
 
-    // เริ่มวาดจากมุมบนซ้ายของ bounding box
-    let drawY = coverY + coverH - fontSize - padding;
+    while (wrappedLines.length * lineHeight > availableHeight && fontSize > 4) {
+      fontSize -= 0.5;
+      lineHeight = fontSize * 1.5;
+      wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
+    }
+
+    // 4. วาด text ที่แปลแล้ว เริ่มจากมุมบนซ้ายของ bounding box
+    let drawY = bounds.y + availableHeight - fontSize;
 
     for (const line of wrappedLines) {
-      if (drawY < coverY) break; // หยุดถ้าเลย bounding box ล่าง
+      if (drawY < bounds.y) break; // หยุดถ้าเลยพื้นที่ด้านล่าง
 
       if (line.trim() === "") {
         drawY -= lineHeight * 0.5;
