@@ -63,7 +63,6 @@ export default function AIChat() {
         }
       });
     }
-    // prevMessagesLenRef.current = currLen;
     scrollToBottom()
   }, [messages]);
 

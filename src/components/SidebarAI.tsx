@@ -2,6 +2,7 @@ import { Box, VStack, Text, Select, Button, Divider, Flex, Image, Spacer } from 
 import { IoCalendarOutline } from "react-icons/io5";
 import { RiRobot3Line } from "react-icons/ri";
 import { BiHome } from "react-icons/bi";
+import { HiOutlineLanguage } from "react-icons/hi2";
 import { useRouter } from "next/router";
 const SidebarAI = () => {
     // Mock AI models
@@ -84,6 +85,23 @@ const SidebarAI = () => {
                         }}
                     >
                         <RiRobot3Line
+                            size={24}
+                            color="#5D5D5D"
+                        />
+                    </Box>
+                    <Box
+                        p={2}
+                        transition="all 0.2s ease-in-out"
+                        rounded={"full"}
+                        cursor={"pointer"}
+                        onClick={() => router.push("/translate-document")}
+                        _hover={{
+                            transform: "translateY(-1px)",
+                            bg: "white",
+                            dropShadow: "0 4px 20px 0 rgba(59, 130, 246, 0.4)",
+                        }}
+                    >
+                        <HiOutlineLanguage
                             size={24}
                             color="#5D5D5D"
                         />
