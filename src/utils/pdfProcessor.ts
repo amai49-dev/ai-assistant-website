@@ -191,39 +191,40 @@ export async function buildOverlayPdf(
       });
     }
 
-    // 2. คำนวณพื้นที่ที่ใช้วาง text แปลแล้ว (เท่ากับพื้นที่ text เดิม)
-    const availableHeight = bounds.height + baseFontSize;
-    const maxTextWidth = Math.max(bounds.width, 100);
+    // 2. เรียง original lines จากบนลงล่าง (y มากสุดก่อน เพราะ PDF y เริ่มจากล่าง)
+    const sortedLines = [...lines].sort((a, b) => b.y - a.y);
 
-    // 3. Auto-shrink: ลดขนาด font จนกว่า text แปลแล้วจะพอดีกับพื้นที่เดิม (min 4pt)
+    // 3. Auto-shrink: ลดขนาด font จน wrapped lines <= จำนวน original lines (min 4pt)
+    const maxTextWidth = Math.max(bounds.width, 100);
     let fontSize = baseFontSize;
-    let lineHeight = fontSize * 1.5;
     let wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
 
-    while (wrappedLines.length * lineHeight > availableHeight && fontSize > 4) {
+    while (wrappedLines.length > sortedLines.length && fontSize > 4) {
       fontSize -= 0.5;
-      lineHeight = fontSize * 1.5;
       wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
     }
 
-    console.log(`[PDF] Page ${pageIndex}: fontSize=${fontSize.toFixed(1)}, wrappedLines=${wrappedLines.length}, availableH=${availableHeight.toFixed(0)}, bounds=(${bounds.x.toFixed(0)},${bounds.y.toFixed(0)},${bounds.width.toFixed(0)},${bounds.height.toFixed(0)})`);
+    console.log(`[PDF] Page ${pageIndex}: fontSize=${fontSize.toFixed(1)}, wrappedLines=${wrappedLines.length}, origLines=${sortedLines.length}, bounds=(${bounds.x.toFixed(0)},${bounds.y.toFixed(0)},${bounds.width.toFixed(0)},${bounds.height.toFixed(0)})`);
 
-    // 4. วาด text ที่แปลแล้ว เริ่มจากมุมบนซ้ายของ bounding box
-    let drawY = bounds.y + availableHeight - fontSize;
+    // 4. วาด text ที่แปลแล้วที่ตำแหน่ง (x, y) ของแต่ละ original line
     let drawnCount = 0;
     let errorCount = 0;
+    const nonEmptyWrapped = wrappedLines.filter((l) => l.trim() !== "");
 
-    for (const line of wrappedLines) {
-      if (drawY < bounds.y) break; // หยุดถ้าเลยพื้นที่ด้านล่าง
+    for (let i = 0; i < nonEmptyWrapped.length; i++) {
+      // ใช้ตำแหน่งของ original line ถ้ามี, ถ้าไม่มี (overflow) ใช้ตำแหน่งสุดท้ายเลื่อนลง
+      const origLine = i < sortedLines.length
+        ? sortedLines[i]
+        : sortedLines[sortedLines.length - 1];
 
-      if (line.trim() === "") {
-        drawY -= lineHeight * 0.5;
-        continue;
-      }
+      const drawX = i < sortedLines.length ? origLine.x : origLine.x;
+      const drawY = i < sortedLines.length
+        ? origLine.y
+        : origLine.y - (i - sortedLines.length + 1) * fontSize * 1.5;
 
       try {
-        pdfPage.drawText(line, {
-          x: bounds.x,
+        pdfPage.drawText(nonEmptyWrapped[i], {
+          x: drawX,
           y: drawY,
           size: fontSize,
           font: customFont,
@@ -233,14 +234,12 @@ export async function buildOverlayPdf(
       } catch (err: any) {
         errorCount++;
         if (errorCount <= 3) {
-          console.error(`[PDF] Page ${pageIndex}: drawText error on line "${line.substring(0, 50)}": ${err.message}`);
+          console.error(`[PDF] Page ${pageIndex}: drawText error: ${err.message}`);
         }
       }
-
-      drawY -= lineHeight;
     }
 
-    console.log(`[PDF] Page ${pageIndex}: drawn=${drawnCount}, errors=${errorCount}, startY=${(bounds.y + availableHeight - fontSize).toFixed(0)}`);
+    console.log(`[PDF] Page ${pageIndex}: drawn=${drawnCount}, errors=${errorCount}`);
   }
 
   return pdfDoc.save();
