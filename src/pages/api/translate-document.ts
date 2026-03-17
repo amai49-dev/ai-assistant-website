@@ -157,6 +157,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // อ่าน file buffer
     const fileBuffer = fs.readFileSync(fileObj.filepath);
 
+    // ------------------- Stream NDJSON Progress -------------------
+    res.setHeader("Content-Type", "application/x-ndjson");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Transfer-Encoding", "chunked");
+
+    const sendEvent = (data: Record<string, any>) => {
+      res.write(JSON.stringify(data) + "\n");
+    };
+
     let outputBuffer: Uint8Array | Buffer;
     let outputFileName: string;
     let mimeType: string;
@@ -167,14 +176,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const pagesWithText = pagesData.filter((p) => p.fullText.trim().length > 0);
 
       if (pagesWithText.length === 0) {
-        return res.status(400).json({ error: "ไม่พบข้อความในไฟล์ PDF" });
+        sendEvent({ type: "error", error: "ไม่พบข้อความในไฟล์ PDF" });
+        return res.end();
       }
+
+      const total = pagesWithText.length;
+      sendEvent({ type: "start", total, fileType: "pdf" });
 
       // แปลทีละหน้า (per-line) → overlay ทับบน PDF ต้นฉบับ
       const pageTranslations = new Map<number, { page: (typeof pagesData)[0]; translatedLines: string[] }>();
 
-      for (const pageData of pagesWithText) {
-        // เรียง lines จากบนลงล่าง แล้วส่งเป็น numbered list
+      for (let idx = 0; idx < pagesWithText.length; idx++) {
+        const pageData = pagesWithText[idx];
+        sendEvent({ type: "progress", page: idx + 1, total });
+
         const sortedLines = [...pageData.lines].sort((a, b) => b.y - a.y);
         const numberedText = sortedLines
           .map((line, i) => `${i + 1}. ${line.text}`)
@@ -189,6 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         pageTranslations.set(pageData.pageIndex, { page: pageData, translatedLines });
       }
 
+      sendEvent({ type: "progress", page: total, total, status: "building" });
       outputBuffer = await buildOverlayPdf(fileBuffer, pageTranslations);
       const langCode = detectLanguageCode(userMessage);
       outputFileName = `translated_${langCode}_${originalName}`;
@@ -199,53 +215,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const slides = await extractPptxTexts(fileBuffer);
 
       if (slides.length === 0) {
-        return res.status(400).json({ error: "ไม่พบข้อความในไฟล์ PPTX" });
+        sendEvent({ type: "error", error: "ไม่พบข้อความในไฟล์ PPTX" });
+        return res.end();
       }
 
-      // แปลทีละ slide
+      const slidesWithText = slides.filter((s) => s.texts.length > 0);
+      const total = slidesWithText.length;
+      sendEvent({ type: "start", total, fileType: "pptx" });
+
       const translations = new Map<string, string[]>();
 
-      for (const slide of slides) {
-        if (slide.texts.length === 0) continue;
+      for (let idx = 0; idx < slidesWithText.length; idx++) {
+        const slide = slidesWithText[idx];
+        sendEvent({ type: "progress", page: idx + 1, total });
 
-        // รวม text ทั้งหมดของ slide ส่งไปแปลพร้อมกัน (vLLM รองรับ newline)
         const combinedText = slide.texts.join("\n---\n");
         const translatedCombined = await translateText(combinedText, userMessage);
-
-        // แยก text กลับตาม delimiter
         const translatedTexts = translatedCombined.split(/\n?---\n?/);
 
-        // ถ้าจำนวนไม่ตรง → ใช้ผลลัพธ์ที่ได้ + เติมตัวเดิม
         const finalTexts: string[] = [];
         for (let i = 0; i < slide.texts.length; i++) {
           finalTexts.push(
             i < translatedTexts.length ? translatedTexts[i].trim() : slide.texts[i],
           );
         }
-
         translations.set(slide.slideFile, finalTexts);
       }
 
+      sendEvent({ type: "progress", page: total, total, status: "building" });
       outputBuffer = await buildTranslatedPptx(fileBuffer, translations);
       const langCode = detectLanguageCode(userMessage);
       outputFileName = `translated_${langCode}_${originalName}`;
       mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     }
 
-    // ส่ง file กลับเป็น base64
+    // ส่งผลลัพธ์สุดท้าย
     const base64Data = Buffer.from(outputBuffer).toString("base64");
-
-    return res.status(200).json({
-      fileName: outputFileName,
-      fileData: base64Data,
-      mimeType,
-    });
+    sendEvent({ type: "done", fileName: outputFileName, fileData: base64Data, mimeType });
+    return res.end();
 
   } catch (error: any) {
     console.error("TRANSLATE ERROR:", error);
-    return res.status(500).json({
-      error: "เกิดข้อผิดพลาดในการแปลเอกสาร",
-      detail: error.message,
-    });
+    try {
+      res.write(JSON.stringify({ type: "error", error: "เกิดข้อผิดพลาดในการแปลเอกสาร", detail: error.message }) + "\n");
+    } catch { /* headers already sent */ }
+    return res.end();
   }
 }
