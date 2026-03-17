@@ -167,7 +167,13 @@ export async function buildOverlayPdf(
     const pdfPage = pdfPages[pageIndex];
     const { bounds, lines } = pageData;
 
-    if (lines.length === 0 || !translatedText.trim()) continue;
+    if (lines.length === 0 || !translatedText.trim()) {
+      console.log(`[PDF] Page ${pageIndex}: skipped (no lines or empty translation)`);
+      continue;
+    }
+
+    console.log(`[PDF] Page ${pageIndex}: ${lines.length} lines, translatedText length=${translatedText.length}`);
+    console.log(`[PDF] Page ${pageIndex}: translatedText preview: ${translatedText.substring(0, 150)}`);
 
     // คำนวณ fontSize เฉลี่ยจากต้นฉบับ
     const avgFontSize = lines.reduce((sum, l) => sum + l.fontSize, 0) / lines.length;
@@ -200,8 +206,12 @@ export async function buildOverlayPdf(
       wrappedLines = wrapText(translatedText, customFont, fontSize, maxTextWidth);
     }
 
+    console.log(`[PDF] Page ${pageIndex}: fontSize=${fontSize.toFixed(1)}, wrappedLines=${wrappedLines.length}, availableH=${availableHeight.toFixed(0)}, bounds=(${bounds.x.toFixed(0)},${bounds.y.toFixed(0)},${bounds.width.toFixed(0)},${bounds.height.toFixed(0)})`);
+
     // 4. วาด text ที่แปลแล้ว เริ่มจากมุมบนซ้ายของ bounding box
     let drawY = bounds.y + availableHeight - fontSize;
+    let drawnCount = 0;
+    let errorCount = 0;
 
     for (const line of wrappedLines) {
       if (drawY < bounds.y) break; // หยุดถ้าเลยพื้นที่ด้านล่าง
@@ -219,12 +229,18 @@ export async function buildOverlayPdf(
           font: customFont,
           color: rgb(0.1, 0.1, 0.1),
         });
-      } catch {
-        // font ไม่รองรับบาง character
+        drawnCount++;
+      } catch (err: any) {
+        errorCount++;
+        if (errorCount <= 3) {
+          console.error(`[PDF] Page ${pageIndex}: drawText error on line "${line.substring(0, 50)}": ${err.message}`);
+        }
       }
 
       drawY -= lineHeight;
     }
+
+    console.log(`[PDF] Page ${pageIndex}: drawn=${drawnCount}, errors=${errorCount}, startY=${(bounds.y + availableHeight - fontSize).toFixed(0)}`);
   }
 
   return pdfDoc.save();
