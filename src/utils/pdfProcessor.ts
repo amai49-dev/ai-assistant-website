@@ -133,7 +133,7 @@ function splitColumnsAndMerge(
   const avgCharWidth = sorted.reduce(
     (sum, i) => sum + (i.width / Math.max(i.str.length, 1)), 0,
   ) / sorted.length;
-  const gapThreshold = Math.max(avgCharWidth * 5, 30); // gap > 5x ตัวอักษร = column break
+  const gapThreshold = Math.max(avgCharWidth * 1.5, 15); // gap > 1.5x ตัวอักษร = column break (ปรับลดเพื่อรองรับ Thai text ที่ชิดกัน)
 
   // แยก segments ตาม x-gap
   const segments: (typeof sorted)[] = [[]];
