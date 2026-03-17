@@ -1,3 +1,9 @@
+// Polyfill DOMMatrix สำหรับ serverless environments (Vercel Node.js 18/20) ที่ไม่มี DOMMatrix
+import DOMMatrix from "dommatrix";
+if (typeof globalThis.DOMMatrix === "undefined") {
+  (globalThis as any).DOMMatrix = DOMMatrix;
+}
+
 import { PDFDocument, PDFFont, rgb } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import * as fs from "fs";
