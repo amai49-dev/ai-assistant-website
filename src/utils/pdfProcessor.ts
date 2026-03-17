@@ -27,10 +27,9 @@ export interface PageTextData {
 // ใช้ pdfjs-dist ตรง ๆ เพื่อดึง text พร้อมตำแหน่ง x, y, fontSize
 
 export async function extractPdfWithPositions(buffer: Buffer): Promise<PageTextData[]> {
-  // ใช้ legacy build สำหรับ Node.js (ไม่ต้องการ DOMMatrix)
-  const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
-  const pdfDoc = await loadingTask.promise;
+  // ใช้ unpdf (serverless build ของ PDF.js -- ไม่ต้องการ canvas/DOMMatrix)
+  const { getDocumentProxy } = await import("unpdf");
+  const pdfDoc = await getDocumentProxy(new Uint8Array(buffer));
 
   const pages: PageTextData[] = [];
 
